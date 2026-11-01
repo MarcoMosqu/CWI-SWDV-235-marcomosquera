@@ -1,6 +1,7 @@
 package edu.cwi;
 
 import io.javalin.Javalin;
+import io.javalin.rendering.template.JavalinJte;
 import static io.javalin.apibuilder.ApiBuilder.*;
 
 public class Main {
@@ -9,6 +10,8 @@ public class Main {
         TransactionController controller = new TransactionController();
 
         var app = Javalin.create(config -> {
+
+            config.fileRenderer(new JavalinJte());
 
             // Display creation form
             config.routes.get("/transactions/new", ctx -> {
