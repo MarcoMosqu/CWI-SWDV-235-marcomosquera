@@ -8,318 +8,262 @@ import static j2html.TagCreator.*;
 
 public class TransactionController implements CrudHandler {
 
-    private final Map<String, String> transactions = new ConcurrentHashMap<>();
+        private final Map<String, String> transactions = new ConcurrentHashMap<>();
+        private final UserAccount account;
 
-    public TransactionController() {
-        this.transactions.put("1", "Transaction 1");
-        this.transactions.put("2", "Transaction 2");
-    }
-
-    @Override
-    public void getAll(Context ctx) {
-        // Use ctx to render all transactions html
-        ctx.render("jte/transactionsPage.jte", Map.of("transactions", transactions));
-
-    }
-
-    @Override
-    public void getOne(Context ctx, String resourceId) {
-
-        String sourceId = ctx.pathParam("resourceId");
-        String user = transactions.get(resourceId);
-
-        if (user != null) {
-            // Use ctx to render transaction html
-            ctx.html(this.renderTransaction(sourceId, user));
-        } else {
-            ctx.status(404).result("Transaction not found");
+        public TransactionController() {
+                this.transactions.put("1", "Transaction 1");
+                this.transactions.put("2", "Transaction 2");
+                // Initialize the UserAccount object
+                this.account = new UserAccount(
+                                "John Public",
+                                500.00,
+                                transactions);
         }
-    }
 
-    @Override
-    public void create(Context ctx) {
+        @Override
+        public void getAll(Context ctx) {
+                // Use ctx to render all transactions html
+                ctx.render("jte/accountPage.jte",
+                                Map.of(
+                                                "title", "Account Transactions",
+                                                "name", account.name(),
+                                                "balance", account.formatBalance(),
+                                                "transactions", account.transactions()));
 
-        String description = ctx.formParam("description");
-
-        String id = String.valueOf(transactions.size() + 1);
-        transactions.put(id, description);
-
-        ctx.html(renderTransactions());
-
-    }
-
-    @Override
-    public void update(Context ctx, String resourceId) {
-
-        if (transactions.containsKey(resourceId)) {
-            String description = ctx.formParam("description");
-
-            transactions.put(resourceId, description);
-
-            ctx.redirect("/transactions");
-            // Use ctx to render all transactions html
-        } else {
-            ctx.status(404).result("Transaction not found");
         }
-    }
 
-    @Override
-    public void delete(Context ctx, String resourceId) {
+        @Override
+        public void getOne(Context ctx, String resourceId) {
 
-        transactions.remove(resourceId);
-        ctx.html(this.renderTransactions());
+                String sourceId = ctx.pathParam("resourceId");
+                String user = transactions.get(resourceId);
 
-        // Use ctx to render all transactions html
-    }
+                if (user != null) {
+                        // Use ctx to render transaction html
+                        ctx.html(this.renderTransaction(sourceId, user));
+                } else {
+                        ctx.status(404).result("Transaction not found");
+                }
+        }
 
-    private String renderTransactions() {
-        return html(
-                head(
-                        title("My Bank - My Transactions"),
-                        link()
-                                .withRel("stylesheet")
-                                .withHref("https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css")),
-                body(
-                        div().withClass("container py-5")
-                                .with(
-                                        div().withClass("row justify-content-center")
-                                                .with(
-                                                        div().withClass("col-md-8")
+        @Override
+        public void create(Context ctx) {
+
+                String description = ctx.formParam("description");
+
+                int nextId = 1;
+
+                for (String existingId : transactions.keySet()) {
+                        int currentId = Integer.parseInt(existingId);
+
+                        if (currentId >= nextId) {
+                                nextId = currentId + 1;
+                        }
+                }
+
+                String id = String.valueOf(nextId);
+
+                transactions.put(id, description);
+
+                ctx.render("jte/accountPage.jte",
+                                Map.of(
+                                                "title", "Account Transactions",
+                                                "name", account.name(),
+                                                "balance", account.formatBalance(),
+                                                "transactions", account.transactions()));
+        }
+
+        @Override
+        public void update(Context ctx, String resourceId) {
+
+                if (transactions.containsKey(resourceId)) {
+                        String description = ctx.formParam("description");
+
+                        transactions.put(resourceId, description);
+
+                        ctx.redirect("/transactions");
+                        // Use ctx to render all transactions html
+                } else {
+                        ctx.status(404).result("Transaction not found");
+                }
+        }
+
+        @Override
+        public void delete(Context ctx, String resourceId) {
+
+                transactions.remove(resourceId);
+                ctx.render("jte/accountPage.jte",
+                                Map.of(
+                                                "title", "Account Transactions",
+                                                "name", account.name(),
+                                                "balance", account.formatBalance(),
+                                                "transactions", account.transactions()));
+
+                // Use ctx to render all transactions html
+        }
+
+        private String renderTransaction(String resourceId, String user) {
+
+                return html(
+                                head(
+                                                title("My Bank - Transaction Details"),
+                                                link()
+                                                                .withRel("stylesheet")
+                                                                .withHref("https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css")),
+                                body(
+                                                div().withClass("container py-5")
                                                                 .with(
-                                                                        div().withClass("card shadow-sm")
-                                                                                .with(
-                                                                                        div().withClass(
-                                                                                                "card-body p-4"),
-
-                                                                                        h1("My Bank")
-                                                                                                .withClass(
-                                                                                                        "text-center mb-4"),
-
-                                                                                        h2("My Transactions")
-                                                                                                .withClass("h4 mb-3"),
-
-                                                                                        ul().withClass(
-                                                                                                "list-group mb-4")
+                                                                                div().withClass("row justify-content-center")
                                                                                                 .with(
-                                                                                                        each(transactions
-                                                                                                                .entrySet(),
-                                                                                                                transaction -> li()
-                                                                                                                        .withClass(
-                                                                                                                                "list-group-item d-flex justify-content-between align-items-center")
-                                                                                                                        .with(
-                                                                                                                                div().with(
-                                                                                                                                        strong("Transaction "
-                                                                                                                                                + transaction
-                                                                                                                                                        .getKey()),
-                                                                                                                                        p(transaction
-                                                                                                                                                .getValue())
-                                                                                                                                                .withClass(
-                                                                                                                                                        "text-muted mb-0")),
+                                                                                                                div().withClass("col-md-6")
+                                                                                                                                .with(
+                                                                                                                                                div().withClass("card shadow-sm")
+                                                                                                                                                                .with(
+                                                                                                                                                                                div().withClass("card-body p-4")
+                                                                                                                                                                                                .with(
+                                                                                                                                                                                                                h1("My Bank")
+                                                                                                                                                                                                                                .withClass(
+                                                                                                                                                                                                                                                "text-center mb-4"),
 
-                                                                                                                                div().withClass(
-                                                                                                                                        "d-flex gap-2")
-                                                                                                                                        .with(
-                                                                                                                                                a("View")
-                                                                                                                                                        .withHref(
-                                                                                                                                                                "/transactions/"
-                                                                                                                                                                        + transaction
-                                                                                                                                                                                .getKey())
-                                                                                                                                                        .withClass(
-                                                                                                                                                                "btn btn-outline-primary btn-sm"),
+                                                                                                                                                                                                                h2("Transaction Details")
+                                                                                                                                                                                                                                .withClass(
+                                                                                                                                                                                                                                                "h4 mb-3"),
 
-                                                                                                                                                a("Edit")
-                                                                                                                                                        .withHref(
-                                                                                                                                                                "/transactions/"
-                                                                                                                                                                        + transaction
-                                                                                                                                                                                .getKey()
-                                                                                                                                                                        + "/edit")
-                                                                                                                                                        .withClass(
-                                                                                                                                                                "btn btn-outline-warning btn-sm"),
+                                                                                                                                                                                                                div().withClass(
+                                                                                                                                                                                                                                "mb-3")
+                                                                                                                                                                                                                                .with(
+                                                                                                                                                                                                                                                p("Source ID: "
+                                                                                                                                                                                                                                                                + resourceId)
+                                                                                                                                                                                                                                                                .withClass(
+                                                                                                                                                                                                                                                                                "mb-2"),
 
-                                                                                                                                                form()
-                                                                                                                                                        .withAction(
-                                                                                                                                                                "/transactions/"
-                                                                                                                                                                        + transaction
-                                                                                                                                                                                .getKey()
-                                                                                                                                                                        + "/delete")
-                                                                                                                                                        .withMethod(
-                                                                                                                                                                "post")
-                                                                                                                                                        .with(
-                                                                                                                                                                button("Delete")
-                                                                                                                                                                        .withType(
-                                                                                                                                                                                "submit")
-                                                                                                                                                                        .withClass(
-                                                                                                                                                                                "btn btn-outline-danger btn-sm")))))),
+                                                                                                                                                                                                                                                p("Transaction: "
+                                                                                                                                                                                                                                                                + user)
+                                                                                                                                                                                                                                                                .withClass(
+                                                                                                                                                                                                                                                                                "mb-2")),
 
-                                                                                        a("Create Transaction")
-                                                                                                .withHref(
-                                                                                                        "/transactions/new")
-                                                                                                .withClass(
-                                                                                                        "btn btn-primary w-100")))))))
-                .render();
-    }
+                                                                                                                                                                                                                a("Back to Transactions")
+                                                                                                                                                                                                                                .withHref(
+                                                                                                                                                                                                                                                "/transactions")
+                                                                                                                                                                                                                                .withClass(
+                                                                                                                                                                                                                                                "btn btn-outline-secondary w-100"))))))))
+                                .render();
 
-    private String renderTransaction(String resourceId, String user) {
+        }
 
-        return html(
-                head(
-                        title("My Bank - Transaction Details"),
-                        link()
-                                .withRel("stylesheet")
-                                .withHref("https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css")),
-                body(
-                        div().withClass("container py-5")
-                                .with(
-                                        div().withClass("row justify-content-center")
-                                                .with(
-                                                        div().withClass("col-md-6")
+        public String renderTransactionForm() {
+                return html(
+                                head(
+                                                title("My Bank - Create Transaction"),
+                                                link()
+                                                                .withRel("stylesheet")
+                                                                .withHref("https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css")),
+                                body(
+                                                div().withClass("container py-5")
                                                                 .with(
-                                                                        div().withClass("card shadow-sm")
-                                                                                .with(
-                                                                                        div().withClass("card-body p-4")
+                                                                                div().withClass("row justify-content-center")
                                                                                                 .with(
-                                                                                                        h1("My Bank")
-                                                                                                                .withClass(
-                                                                                                                        "text-center mb-4"),
+                                                                                                                div().withClass("col-md-6")
+                                                                                                                                .with(
+                                                                                                                                                div().withClass("card shadow-sm")
+                                                                                                                                                                .with(
+                                                                                                                                                                                div().withClass(
+                                                                                                                                                                                                "card-body p-4"),
+                                                                                                                                                                                h2("Create Transaction")
+                                                                                                                                                                                                .withClass("mb-4"),
+                                                                                                                                                                                form()
+                                                                                                                                                                                                .withAction(
+                                                                                                                                                                                                                "/transactions")
+                                                                                                                                                                                                .withMethod("post")
+                                                                                                                                                                                                .with(
+                                                                                                                                                                                                                label("Description")
+                                                                                                                                                                                                                                .withFor(
+                                                                                                                                                                                                                                                "description")
+                                                                                                                                                                                                                                .withClass(
+                                                                                                                                                                                                                                                "form-label"),
+                                                                                                                                                                                                                input()
+                                                                                                                                                                                                                                .withType(
+                                                                                                                                                                                                                                                "text")
+                                                                                                                                                                                                                                .withName(
+                                                                                                                                                                                                                                                "description")
+                                                                                                                                                                                                                                .withId("description")
+                                                                                                                                                                                                                                .withClass(
+                                                                                                                                                                                                                                                "form-control mb-3")
+                                                                                                                                                                                                                                .attr("required",
+                                                                                                                                                                                                                                                "required"),
+                                                                                                                                                                                                                button("Create Transaction")
+                                                                                                                                                                                                                                .withType(
+                                                                                                                                                                                                                                                "submit")
+                                                                                                                                                                                                                                .withClass(
+                                                                                                                                                                                                                                                "btn btn-primary w-100")),
+                                                                                                                                                                                a("Cancel")
+                                                                                                                                                                                                .withHref(
+                                                                                                                                                                                                                "/transactions")
+                                                                                                                                                                                                .withClass(
+                                                                                                                                                                                                                "btn btn-outline-secondary w-100 mt-2")))))))
+                                .render();
+        }
 
-                                                                                                        h2("Transaction Details")
-                                                                                                                .withClass(
-                                                                                                                        "h4 mb-3"),
-
-                                                                                                        div().withClass(
-                                                                                                                "mb-3")
-                                                                                                                .with(
-                                                                                                                        p("Source ID: "
-                                                                                                                                + resourceId)
-                                                                                                                                .withClass(
-                                                                                                                                        "mb-2"),
-
-                                                                                                                        p("Transaction: "
-                                                                                                                                + user)
-                                                                                                                                .withClass(
-                                                                                                                                        "mb-2")),
-
-                                                                                                        a("Back to Transactions")
-                                                                                                                .withHref(
-                                                                                                                        "/transactions")
-                                                                                                                .withClass(
-                                                                                                                        "btn btn-outline-secondary w-100"))))))))
-                .render();
-
-    }
-
-    public String renderTransactionForm() {
-        return html(
-                head(
-                        title("My Bank - Create Transaction"),
-                        link()
-                                .withRel("stylesheet")
-                                .withHref("https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css")),
-                body(
-                        div().withClass("container py-5")
-                                .with(
-                                        div().withClass("row justify-content-center")
-                                                .with(
-                                                        div().withClass("col-md-6")
+        public String renderUpdateForm(String resourceId, String description) {
+                return html(
+                                head(
+                                                title("My Bank - Update Transaction"),
+                                                link()
+                                                                .withRel("stylesheet")
+                                                                .withHref("https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css")),
+                                body(
+                                                div().withClass("container py-5")
                                                                 .with(
-                                                                        div().withClass("card shadow-sm")
-                                                                                .with(
-                                                                                        div().withClass(
-                                                                                                "card-body p-4"),
-                                                                                        h2("Create Transaction")
-                                                                                                .withClass("mb-4"),
-                                                                                        form()
-                                                                                                .withAction(
-                                                                                                        "/transactions")
-                                                                                                .withMethod("post")
+                                                                                div().withClass("row justify-content-center")
                                                                                                 .with(
-                                                                                                        label("Description")
-                                                                                                                .withFor(
-                                                                                                                        "description")
-                                                                                                                .withClass(
-                                                                                                                        "form-label"),
-                                                                                                        input()
-                                                                                                                .withType(
-                                                                                                                        "text")
-                                                                                                                .withName(
-                                                                                                                        "description")
-                                                                                                                .withId("description")
-                                                                                                                .withClass(
-                                                                                                                        "form-control mb-3")
-                                                                                                                .attr("required",
-                                                                                                                        "required"),
-                                                                                                        button("Create Transaction")
-                                                                                                                .withType(
-                                                                                                                        "submit")
-                                                                                                                .withClass(
-                                                                                                                        "btn btn-primary w-100")),
-                                                                                        a("Cancel")
-                                                                                                .withHref(
-                                                                                                        "/transactions")
-                                                                                                .withClass(
-                                                                                                        "btn btn-outline-secondary w-100 mt-2")))))))
-                .render();
-    }
+                                                                                                                div().withClass("col-md-6")
+                                                                                                                                .with(
+                                                                                                                                                div().withClass("card shadow-sm")
+                                                                                                                                                                .with(
+                                                                                                                                                                                div().withClass(
+                                                                                                                                                                                                "card-body p-4"),
+                                                                                                                                                                                h2("Update Transaction")
+                                                                                                                                                                                                .withClass("mb-4"),
+                                                                                                                                                                                form()
+                                                                                                                                                                                                .withAction(
+                                                                                                                                                                                                                "/transactions/"
+                                                                                                                                                                                                                                + resourceId)
+                                                                                                                                                                                                .withMethod("post")
+                                                                                                                                                                                                .with(
+                                                                                                                                                                                                                label("Description")
+                                                                                                                                                                                                                                .withFor(
+                                                                                                                                                                                                                                                "description")
+                                                                                                                                                                                                                                .withClass(
+                                                                                                                                                                                                                                                "form-label"),
+                                                                                                                                                                                                                input()
+                                                                                                                                                                                                                                .withType(
+                                                                                                                                                                                                                                                "text")
+                                                                                                                                                                                                                                .withName(
+                                                                                                                                                                                                                                                "description")
+                                                                                                                                                                                                                                .withId("description")
+                                                                                                                                                                                                                                .withValue(
+                                                                                                                                                                                                                                                description)
+                                                                                                                                                                                                                                .withClass(
+                                                                                                                                                                                                                                                "form-control mb-3")
+                                                                                                                                                                                                                                .attr("required",
+                                                                                                                                                                                                                                                "required"),
+                                                                                                                                                                                                                button("Save Changes")
+                                                                                                                                                                                                                                .withType(
+                                                                                                                                                                                                                                                "submit")
+                                                                                                                                                                                                                                .withClass(
+                                                                                                                                                                                                                                                "btn btn-primary w-100")),
+                                                                                                                                                                                a("Cancel")
+                                                                                                                                                                                                .withHref(
+                                                                                                                                                                                                                "/transactions")
+                                                                                                                                                                                                .withClass(
+                                                                                                                                                                                                                "btn btn-outline-secondary w-100 mt-2")))))))
+                                .render();
 
-    public String renderUpdateForm(String resourceId, String description) {
-        return html(
-                head(
-                        title("My Bank - Update Transaction"),
-                        link()
-                                .withRel("stylesheet")
-                                .withHref("https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css")),
-                body(
-                        div().withClass("container py-5")
-                                .with(
-                                        div().withClass("row justify-content-center")
-                                                .with(
-                                                        div().withClass("col-md-6")
-                                                                .with(
-                                                                        div().withClass("card shadow-sm")
-                                                                                .with(
-                                                                                        div().withClass(
-                                                                                                "card-body p-4"),
-                                                                                        h2("Update Transaction")
-                                                                                                .withClass("mb-4"),
-                                                                                        form()
-                                                                                                .withAction(
-                                                                                                        "/transactions/"
-                                                                                                                + resourceId)
-                                                                                                .withMethod("post")
-                                                                                                .with(
-                                                                                                        label("Description")
-                                                                                                                .withFor(
-                                                                                                                        "description")
-                                                                                                                .withClass(
-                                                                                                                        "form-label"),
-                                                                                                        input()
-                                                                                                                .withType(
-                                                                                                                        "text")
-                                                                                                                .withName(
-                                                                                                                        "description")
-                                                                                                                .withId("description")
-                                                                                                                .withValue(
-                                                                                                                        description)
-                                                                                                                .withClass(
-                                                                                                                        "form-control mb-3")
-                                                                                                                .attr("required",
-                                                                                                                        "required"),
-                                                                                                        button("Save Changes")
-                                                                                                                .withType(
-                                                                                                                        "submit")
-                                                                                                                .withClass(
-                                                                                                                        "btn btn-primary w-100")),
-                                                                                        a("Cancel")
-                                                                                                .withHref(
-                                                                                                        "/transactions")
-                                                                                                .withClass(
-                                                                                                        "btn btn-outline-secondary w-100 mt-2")))))))
-                .render();
+        }
 
-    }
-
-    public String getTransaction(String resourceId) {
-        return transactions.get(resourceId);
-    }
+        public String getTransaction(String resourceId) {
+                return transactions.get(resourceId);
+        }
 
 }
