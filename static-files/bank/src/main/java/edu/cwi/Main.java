@@ -1,8 +1,11 @@
 package edu.cwi;
 
 import io.javalin.Javalin;
+import io.javalin.http.UnauthorizedResponse;
 import io.javalin.rendering.template.JavalinJte;
 import static io.javalin.apibuilder.ApiBuilder.*;
+
+import java.util.List;
 
 public class Main {
     public static void main(String[] args) {
@@ -13,46 +16,90 @@ public class Main {
 
             config.fileRenderer(new JavalinJte());
 
-            // Display creation form
-            config.routes.get("/transactions/new", ctx -> {
-                String view = controller.renderTransactionForm();
-                ctx.html(view);
-            });
+            config.staticFiles.add("/public");
 
-            // Display update form
-            config.routes.get("/transactions/{resourceId}/edit", ctx -> {
-                String resourceId = ctx.pathParam("resourceId");
+            // Route security
+            config.routes.beforeMatched(ctx -> {
 
-                String description = controller.getTransaction(resourceId);
+                // If the route has no roles, allow it
+                if (ctx.routeRoles().isEmpty()) {
+                    return;
+                }
 
-                if (description != null) {
-                    String view = controller.renderUpdateForm(resourceId, description);
-                    ctx.html(view);
-                } else {
-                    ctx.status(404).result("Transaction not found");
+                String role = ctx.cookieStore().get("user-role");
+
+                // No role means the user is not logged in
+                if (role == null) {
+                    throw new UnauthorizedResponse();
+                }
+
+                try {
+                    AppRole appRole = AppRole.valueOf(role);
+
+                    // User does not have the required role
+                    if (!ctx.routeRoles().contains(appRole)) {
+                        throw new UnauthorizedResponse();
+                    }
+
+                } catch (IllegalArgumentException e) {
+                    throw new UnauthorizedResponse();
                 }
             });
 
-            // Create transaction
-            config.routes.post("/transactions", ctx -> {
-                controller.create(ctx);
-            });
-
-            // Update transaction
-            config.routes.post("/transactions/{resourceId}", ctx -> {
-                controller.update(ctx, ctx.pathParam("resourceId"));
-            });
-
-            // Delete transaction
-            config.routes.post("/transactions/{resourceId}/delete", ctx -> {
-                controller.delete(ctx, ctx.pathParam("resourceId"));
-            });
-
-            // Existing CRUD routes
             config.routes.apiBuilder(() -> {
-                crud("transactions/{resourceId}", controller);
+
+                // Authentication
+                post("/account", AuthController::authenticate);
+                get("/logout", AuthController::logout);
+
+                // Account
+                path("/account", List.of(AppRole.CUSTOMER), () -> {
+                    get(AccountController::renderAccount);
+                });
+
+                // Transactions
+                path("/transactions", List.of(AppRole.CUSTOMER), () -> {
+
+                    // Display creation form
+                    get("/new", ctx -> {
+                        String view = controller.renderTransactionForm();
+                        ctx.html(view);
+                    });
+
+                    // Display update form
+                    get("/{resourceId}/edit", ctx -> {
+                        String resourceId = ctx.pathParam("resourceId");
+
+                        String description = controller.getTransaction(resourceId);
+
+                        if (description != null) {
+                            String view = controller.renderUpdateForm(resourceId, description);
+                            ctx.html(view);
+                        } else {
+                            ctx.status(404).result("Transaction not found");
+                        }
+                    });
+
+                    // Create transaction
+                    post("", ctx -> {
+                        controller.create(ctx);
+                    });
+
+                    // Update transaction
+                    post("/{resourceId}", ctx -> {
+                        controller.update(ctx, ctx.pathParam("resourceId"));
+                    });
+
+                    // Delete transaction
+                    post("/{resourceId}/delete", ctx -> {
+                        controller.delete(ctx, ctx.pathParam("resourceId"));
+                    });
+
+                    // CRUD routes
+                    crud("{resourceId}", controller);
+                });
             });
+
         }).start(7070);
     }
-
 }

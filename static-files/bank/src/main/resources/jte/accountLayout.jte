@@ -129,8 +129,8 @@
                 </div>
 
                 <nav>
-                    <a href="/transactions" class="active">
-                        Dashboard
+                    <a href="/logout" class="active">
+                        Logout
                     </a>
 
                     <a href="/transactions">

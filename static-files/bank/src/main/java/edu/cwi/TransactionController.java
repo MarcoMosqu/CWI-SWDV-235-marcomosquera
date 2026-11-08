@@ -15,10 +15,7 @@ public class TransactionController implements CrudHandler {
                 this.transactions.put("1", "Transaction 1");
                 this.transactions.put("2", "Transaction 2");
                 // Initialize the UserAccount object
-                this.account = new UserAccount(
-                                "John Public",
-                                500.00,
-                                transactions);
+                this.account = new UserAccount("94f6901f-cd0f-4c90-81dc-3601a071c077", "Alice Jones", AppRole.CUSTOMER, 750.00, Map.of("1", "Deposited $750.00"));
         }
 
         @Override
